@@ -29,7 +29,7 @@ type HttpRequest struct {
 }
 
 func NewHTTPRequest() *HttpRequest {
-	return &HttpRequest{Headers: make(map[string]string)}
+	return &HttpRequest{Headers: make(map[string]string), context: context.Background()}
 }
 
 func (r *HttpRequest) SetMethod(method string) *HttpRequest {
@@ -73,18 +73,9 @@ func (r *HttpRequest) Build() (req *http.Request, err error) {
 		body = bytes.NewBuffer(r.Body)
 	}
 
-	if r.context != nil {
-		req, err = http.NewRequestWithContext(r.context, r.Method, r.URL, body)
-	} else {
-		req, err = http.NewRequest(r.Method, r.URL, body)
-	}
-
+	req, err = http.NewRequestWithContext(r.context, r.Method, r.URL, body)
 	if err != nil {
 		return nil, err
-	}
-
-	if r.context != nil {
-		req.WithContext(r.context)
 	}
 
 	for header, value := range r.Headers {
@@ -146,10 +137,6 @@ func NewHTTPTransportWithProxy(retryCount int, retryIntervalMs int, proxyUrl str
 
 func (tr *HttpTransport) send(req *http.Request) (*HttpResponse, error) {
 	resp, err := tr.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
 	if err != nil {
 		return nil, err
 	}
