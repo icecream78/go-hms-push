@@ -168,7 +168,9 @@ func (tr *HttpTransport) Send(ctx context.Context, request *HttpRequest) (result
 			}
 
 			// clear result body so we can reuse existing connection for next retry
-			tr.drainBody(result.Body)
+			if err = tr.drainBody(result.Body); err != nil {
+				break
+			}
 		}
 
 		// check status of context. if context done - stop executing and return result
@@ -183,9 +185,10 @@ func (tr *HttpTransport) Send(ctx context.Context, request *HttpRequest) (result
 	return result, err
 }
 
-func (tr *HttpTransport) drainBody(body io.ReadCloser) {
+func (tr *HttpTransport) drainBody(body io.ReadCloser) error {
 	defer body.Close()
-	io.Copy(ioutil.Discard, io.LimitReader(body, respReadLimit))
+	_, err := io.Copy(ioutil.Discard, io.LimitReader(body, respReadLimit))
+	return err
 }
 
 func (tr *HttpTransport) isRetryStatusCode(status int) bool {

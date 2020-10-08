@@ -162,7 +162,7 @@ type AndroidNotification struct {
 	Group string `json:"group,omitempty"`
 
 	// Android notification message badge control.
-	Badge *BadgeNotification `json:"badge,omitempty,omitempty"`
+	Badge *BadgeNotification `json:"badge,omitempty"`
 
 	// Content displayed on the status bar after the device receives a notification message.
 	Ticker string `json:"ticker,omitempty"`
@@ -319,7 +319,7 @@ func validateAndroidNotification(notification *AndroidNotification) error {
 		return nil
 	}
 
-	if notification.Sound == "" && notification.DefaultSound == false {
+	if notification.Sound == "" && !notification.DefaultSound {
 		return errors.New("sound must not be empty when default_sound is false")
 	}
 

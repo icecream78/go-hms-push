@@ -8,7 +8,7 @@ import (
 // TODO: find more proper way check that values
 // validation for ttl is from 0 up to 1296000 (15 days) max
 var (
-	ttlPattern   = regexp.MustCompile("\\d+|\\d+[sS]|\\d+.\\d{1,9}|\\d+.\\d{1,9}[sS]")
+	ttlPattern   = regexp.MustCompile(`\d+|\d+[sS]|\d+.\d{1,9}|\d+.\d{1,9}[sS]`)
 	colorPattern = regexp.MustCompile("^#[0-9a-fA-F]{6}$")
 )
 
