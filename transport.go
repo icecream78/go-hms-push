@@ -73,7 +73,12 @@ func (r *HttpRequest) Build() (req *http.Request, err error) {
 		body = bytes.NewBuffer(r.Body)
 	}
 
-	req, err = http.NewRequestWithContext(r.context, r.Method, r.URL, body)
+	reqContext := context.Background()
+	if r.context != nil {
+		reqContext = r.context
+	}
+
+	req, err = http.NewRequestWithContext(reqContext, r.Method, r.URL, body)
 	if err != nil {
 		return nil, err
 	}

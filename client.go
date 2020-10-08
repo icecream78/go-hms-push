@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -94,11 +93,11 @@ func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
 		return "", errors.New("fail get token")
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respDecoder := json.NewDecoder(resp.Body)
 	defer resp.Body.Close()
 
 	var token TokenMsg
-	if err = json.Unmarshal(respBody, &token); err != nil {
+	if err := respDecoder.Decode(&token); err != nil {
 		return "", err
 	}
 
@@ -139,13 +138,14 @@ func (c *HuaweiClient) sendHttpRequest(ctx context.Context, request *HttpRequest
 		return nil, err
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respDecoder := json.NewDecoder(resp.Body)
 	defer resp.Body.Close()
 
 	var hr HuaweiResponse
-	if err = json.Unmarshal(respBody, &hr); err != nil {
+	if err := respDecoder.Decode(&hr); err != nil {
 		return nil, err
 	}
+
 	return &hr, nil
 }
 
