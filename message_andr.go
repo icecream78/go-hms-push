@@ -31,7 +31,7 @@ type AndroidConfig struct {
 	// If the user device goes online within the message cache time, the messages are delivered.
 	// Otherwise, the messages are discarded.
 	// The default value is 86400 (1 day), and the maximum value is 1296000 (15 days).
-	TTL string `json:"ttl,omitempty"`
+	TTL *TTL `json:"ttl,omitempty"`
 
 	// Tag of a message in a batch delivery task.
 	// The tag is returned to the app server when HUAWEI Push Kit sends the message receipt.
@@ -196,7 +196,7 @@ type AndroidNotification struct {
 	// For example, ["3.5S","2S","1S","1.5S"].
 	// A maximum of ten array elements are supported.
 	// The value of each element is an integer ranging from 0 to 60.
-	VibrateConfig []string `json:"vibrate_config,omitempty"`
+	VibrateConfig []*TTL `json:"vibrate_config,omitempty"`
 
 	// Android notification message visibility. The options are as follows:
 	// VISIBILITY_UNSPECIFIED
@@ -262,13 +262,13 @@ type LightSettings struct {
 	// Breath light color. This parameter is mandatory when light_settings is set.
 	Color *Color `json:"color"`
 
-	// Interval when a breath light is on, in the format of \d+|\d+[sS]|\d+.\d{1,9}|\d+.\d{1,9}[sS].
+	// Interval when a breath light is on
 	// This parameter is mandatory when light_settings is set.
-	LightOnDuration string `json:"light_on_duration,omitempty"`
+	LightOnDuration *TTL `json:"light_on_duration,omitempty"`
 
-	// Interval when a breath light is off, in the format of \d+|\d+[sS]|\d+.\d{1,9}|\d+.\d{1,9}[sS].
+	// Interval when a breath light is off
 	// This parameter is mandatory when light_settings is set.
-	LightOffDuration string `json:"light_off_duration,omitempty"`
+	LightOffDuration *TTL `json:"light_off_duration,omitempty"`
 }
 
 type Color struct {
@@ -298,10 +298,6 @@ func validateAndroidConfig(androidConfig *AndroidConfig) error {
 		androidConfig.Urgency != DeliveryPriorityHigh &&
 		androidConfig.Urgency != DeliveryPriorityNormal {
 		return errors.New("delivery_priority must be 'HIGH' or 'NORMAL'")
-	}
-
-	if androidConfig.TTL != "" && !ttlPattern.MatchString(androidConfig.TTL) {
-		return errors.New("malformed ttl")
 	}
 
 	if androidConfig.FastAppTarget != 0 &&
@@ -381,8 +377,8 @@ func validateVibrateTimings(notification *AndroidNotification) error {
 			return errors.New("vibrate_timings can't be more than 10 elements")
 		}
 		for _, vibrateTiming := range notification.VibrateConfig {
-			if !ttlPattern.MatchString(vibrateTiming) {
-				return errors.New("malformed vibrate_timings")
+			if vibrateTiming.Seconds() > 60 {
+				return errors.New("vibrate_timings are more 60 seconds")
 			}
 		}
 	}
@@ -410,15 +406,6 @@ func validateLightSetting(notification *AndroidNotification) error {
 		return errors.New("light_settings.color can't be nil")
 	}
 
-	if notification.LightSettings.LightOnDuration == "" ||
-		!ttlPattern.MatchString(notification.LightSettings.LightOnDuration) {
-		return errors.New("light_settings.light_on_duration is empty or malformed")
-	}
-
-	if notification.LightSettings.LightOffDuration == "" ||
-		!ttlPattern.MatchString(notification.LightSettings.LightOffDuration) {
-		return errors.New("light_settings.light_off_duration is empty or malformed")
-	}
 	return nil
 }
 
@@ -450,7 +437,6 @@ func validateClickAction(clickAction *ClickAction) error {
 func GetDefaultAndroid() *AndroidConfig {
 	android := &AndroidConfig{
 		Urgency:      DeliveryPriorityNormal,
-		TTL:          "86400s",
 		Notification: nil,
 	}
 	return android

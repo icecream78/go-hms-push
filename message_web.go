@@ -137,10 +137,6 @@ func validateWebPushHeaders(headers *WebPushHeaders) error {
 		return nil
 	}
 
-	if headers.TTL != "" && !ttlPattern.MatchString(headers.TTL) {
-		return errors.New("malformed ttl")
-	}
-
 	if headers.Urgency != "" &&
 		headers.Urgency != UrgencyHigh &&
 		headers.Urgency != UrgencyNormal &&
