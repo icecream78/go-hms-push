@@ -1,6 +1,7 @@
 package hms
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -31,8 +32,8 @@ func (t TTL) MarshalJSON() ([]byte, error) {
 		sec = MaxMessageTTLSec
 	}
 
-	s := fmt.Sprintf("%gS", sec)
-	return []byte(s), nil
+	s := fmt.Sprintf("%.2gS", sec)
+	return json.Marshal(s)
 }
 
 // HuaweiMessage represents list of request params and payload for push api
