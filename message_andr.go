@@ -1,6 +1,8 @@
 package hms
 
-import "errors"
+import (
+	"errors"
+)
 
 type AndroidConfig struct {
 	// Mode for the HUAWEI Push Kit server to control messages cached in user offline status.
@@ -20,7 +22,7 @@ type AndroidConfig struct {
 	// You need to apply for the permission when setting the parameter to HIGH,
 	// in which the app process can be forcibly started when a data message reaches a user's mobile phone.
 	// Please refer to https://developer.huawei.com/consumer/en/doc/development/HMS-Guides/push-faq-v4#apply_special_permissions
-	Urgency string `json:"urgency,omitempty"`
+	Urgency AndroidUrgency `json:"urgency,omitempty"`
 
 	// Scenario where a high-priority data message is sent.
 	// Currently, this parameter can only be set to PLAY_VOICE (voice playing) and additional permission is required.
@@ -41,7 +43,7 @@ type AndroidConfig struct {
 	// State of a mini program when a quick app sends a data message. The options are as follows:
 	// 1: development state.
 	// 2: production state (default value).
-	FastAppTarget int `json:"fast_app_target,omitempty"`
+	FastAppTarget FastAppState `json:"fast_app_target,omitempty"`
 
 	// Custom message payload. If the data parameter is set, the value of the message.data field is overwritten.
 	Data string `json:"data,omitempty"`
@@ -136,7 +138,7 @@ type AndroidNotification struct {
 	// 0: default style.
 	// 1: bigText.
 	// 3: inbox style.
-	Style int `json:"style,omitempty"`
+	Style NotificationBarStyle `json:"style,omitempty"`
 
 	// Android notification message title in bigText style.
 	// This parameter is mandatory when style is set to 1.
@@ -183,7 +185,7 @@ type AndroidNotification struct {
 	// LOW: common (silent) message
 	// NORMAL: important message
 	// HIGH: very important message
-	Importance string `json:"importance,omitempty"`
+	Importance NotificationPriority `json:"importance,omitempty"`
 
 	// Indicates whether to use the default vibration mode.
 	UseDefaultVibrate bool `json:"use_default_vibrate,omitempty"`
@@ -198,13 +200,9 @@ type AndroidNotification struct {
 	// The value of each element is an integer ranging from 0 to 60.
 	VibrateConfig []*TTL `json:"vibrate_config,omitempty"`
 
-	// Android notification message visibility. The options are as follows:
-	// VISIBILITY_UNSPECIFIED
-	// PRIVATE
-	// PUBLIC
-	// SECRET
+	// Android notification message visibility.
 	// For details refer to: https://developer.huawei.com/consumer/en/doc/development/HMS-Guides/push-other#visibility
-	Visibility string `json:"visibility,omitempty"`
+	Visibility Visibility `json:"visibility,omitempty"`
 
 	// Custom breath light mode.
 	// For details refer to: https://developer.huawei.com/consumer/en/doc/development/HMS-References/push-sendapi#lightsettings
@@ -224,7 +222,7 @@ type ClickAction struct {
 	// 2: tap to open a specified URL.
 	// 3: tap to start the app.
 	// 4: tap to access rich media information.
-	Type int `json:"type"`
+	Type ClickActionType `json:"type"`
 
 	// Indicates which specific app`s page to open
 	// When type is set to 1, you must set at least one of intent and action.
@@ -294,18 +292,6 @@ func validateAndroidConfig(androidConfig *AndroidConfig) error {
 		return errors.New("collapse_key must be in interval [-1 - 100]")
 	}
 
-	if androidConfig.Urgency != "" &&
-		androidConfig.Urgency != DeliveryPriorityHigh &&
-		androidConfig.Urgency != DeliveryPriorityNormal {
-		return errors.New("delivery_priority must be 'HIGH' or 'NORMAL'")
-	}
-
-	if androidConfig.FastAppTarget != 0 &&
-		androidConfig.FastAppTarget != FastAppTargetDevelop &&
-		androidConfig.FastAppTarget != FastAppTargetProduct {
-		return errors.New("invalid fast_app_target")
-	}
-
 	// validate android notification
 	return validateAndroidNotification(androidConfig.Notification)
 }
@@ -320,10 +306,6 @@ func validateAndroidNotification(notification *AndroidNotification) error {
 	}
 
 	if err := validateAndroidNotifyStyle(notification); err != nil {
-		return err
-	}
-
-	if err := validateAndroidNotifyPriority(notification); err != nil {
 		return err
 	}
 
@@ -348,8 +330,7 @@ func validateAndroidNotification(notification *AndroidNotification) error {
 }
 
 func validateAndroidNotifyStyle(notification *AndroidNotification) error {
-	switch notification.Style {
-	case StyleBigText:
+	if notification.Style == NotificationBarStyleBigText {
 		if notification.BigTitle == "" {
 			return errors.New("big_title must not be empty when style is 1")
 		}
@@ -357,16 +338,6 @@ func validateAndroidNotifyStyle(notification *AndroidNotification) error {
 		if notification.BigBody == "" {
 			return errors.New("big_body must not be empty when style is 1")
 		}
-	}
-	return nil
-}
-
-func validateAndroidNotifyPriority(notification *AndroidNotification) error {
-	if notification.Importance != "" &&
-		notification.Importance != NotificationPriorityHigh &&
-		notification.Importance != NotificationPriorityDefault &&
-		notification.Importance != NotificationPriorityLow {
-		return errors.New("Importance must be 'HIGH', 'NORMAL' or 'LOW'")
 	}
 	return nil
 }
@@ -388,11 +359,6 @@ func validateVibrateTimings(notification *AndroidNotification) error {
 func validateVisibility(notification *AndroidNotification) error {
 	if notification.Visibility == "" {
 		notification.Visibility = VisibilityPrivate
-		return nil
-	}
-	if notification.Visibility != VisibilityUnspecified && notification.Visibility != VisibilityPrivate &&
-		notification.Visibility != VisibilityPublic && notification.Visibility != VisibilitySecret {
-		return errors.New("visibility must be VISIBILITY_UNSPECIFIED, PRIVATE, PUBLIC or SECRET")
 	}
 	return nil
 }
@@ -415,16 +381,16 @@ func validateClickAction(clickAction *ClickAction) error {
 	}
 
 	switch clickAction.Type {
-	case TypeIntentOrAction:
+	case ClickActionTypeIntentOrAction:
 		if clickAction.Intent == "" && clickAction.Action == "" {
 			return errors.New("at least one of intent and action is not empty when type is 1")
 		}
-	case TypeUrl:
+	case ClickActionTypeUrl:
 		if clickAction.Url == "" {
 			return errors.New("url must not be empty when type is 2")
 		}
-	case TypeApp:
-	case TypeRichResource:
+	case ClickActionTypeApp:
+	case ClickActionTypeRichResource:
 		if clickAction.RichResource == "" {
 			return errors.New("rich_resource must not be empty when type is 4")
 		}
@@ -436,7 +402,7 @@ func validateClickAction(clickAction *ClickAction) error {
 
 func GetDefaultAndroid() *AndroidConfig {
 	android := &AndroidConfig{
-		Urgency:      DeliveryPriorityNormal,
+		Urgency:      AndroidUrgencyNormal,
 		Notification: nil,
 	}
 	return android
@@ -445,7 +411,7 @@ func GetDefaultAndroid() *AndroidConfig {
 func GetDefaultAndroidNotification() *AndroidNotification {
 	notification := &AndroidNotification{
 		DefaultSound: true,
-		Importance:   NotificationPriorityDefault,
+		Importance:   NotificationPriorityNormal,
 		ClickAction:  getDefaultClickAction(),
 	}
 
@@ -461,7 +427,7 @@ func GetDefaultAndroidNotification() *AndroidNotification {
 
 func getDefaultClickAction() *ClickAction {
 	return &ClickAction{
-		Type:   TypeIntentOrAction,
+		Type:   ClickActionTypeIntentOrAction,
 		Action: "Action",
 	}
 }

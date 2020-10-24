@@ -18,13 +18,13 @@ type WebPushConfig struct {
 
 type WebPushHeaders struct {
 	// Message cache time, in seconds, for example, 20, 20s, or 20S.
-	TTL string `json:"ttl,omitempty"`
+	TTL *TTL `json:"ttl,omitempty"`
 
 	// Message ID, which can be used to overwrite undelivered messages.
 	Topic string `json:"topics,omitempty"`
 
 	// Message emergency level. The value can only be very-low, low, normal, or high.
-	Urgency string `json:"urgency,omitempty"`
+	Urgency Urgency `json:"urgency,omitempty"`
 }
 
 type HmsWebPushOption struct {
@@ -59,7 +59,7 @@ type WebPushNotification struct {
 	Badge string `json:"badge,omitempty"`
 
 	// Text direction, which can be set to auto, ltr, or rtl.
-	Dir string `json:"dir,omitempty"`
+	Dir TextDirection `json:"dir,omitempty"`
 
 	// Vibration interval, in milliseconds. The value is an integer by default. The value range is [100,200,300].
 	Vibrate []int `json:"vibrate,omitempty"`
@@ -91,30 +91,9 @@ type WebPushAction struct {
 	Title string `json:"title,omitempty"`
 }
 
-func GetDefaultWebPushConfig() *WebPushConfig {
-	return &WebPushConfig{
-		Headers:    getDefaultHeaders(),
-		HmsOptions: getDefaultHmsOptions(),
-	}
-}
-
-func getDefaultHeaders() *WebPushHeaders {
-	return &WebPushHeaders{
-		TTL:     "990",
-		Topic:   "topic",
-		Urgency: UrgencyVeryLow,
-	}
-}
-
-func getDefaultHmsOptions() *HmsWebPushOption {
-	return &HmsWebPushOption{
-		Link: "https://www.huawei.com",
-	}
-}
-
 func GetDefaultWebNotification() *WebPushNotification {
 	return &WebPushNotification{
-		Dir:       DirAuto,
+		Dir:       TextDirAuto,
 		Silent:    true,
 		Timestamp: time.Now().Unix(),
 	}
@@ -125,26 +104,7 @@ func validateWebPushConfig(webPushConfig *WebPushConfig) error {
 		return nil
 	}
 
-	if err := validateWebPushHeaders(webPushConfig.Headers); err != nil {
-		return err
-	}
-
 	return validateWebPushNotification(webPushConfig.Notification)
-}
-
-func validateWebPushHeaders(headers *WebPushHeaders) error {
-	if headers == nil {
-		return nil
-	}
-
-	if headers.Urgency != "" &&
-		headers.Urgency != UrgencyHigh &&
-		headers.Urgency != UrgencyNormal &&
-		headers.Urgency != UrgencyLow &&
-		headers.Urgency != UrgencyVeryLow {
-		return errors.New("priority must be 'high', 'normal', 'low' or 'very-low'")
-	}
-	return nil
 }
 
 func validateWebPushNotification(notification *WebPushNotification) error {
@@ -156,9 +116,6 @@ func validateWebPushNotification(notification *WebPushNotification) error {
 		return err
 	}
 
-	if err := validateWebPushDirection(notification.Dir); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -173,18 +130,4 @@ func validateWebPushAction(actions []*WebPushAction) error {
 		}
 	}
 	return nil
-}
-
-func validateWebPushDirection(dir string) error {
-	if dir != DirAuto && dir != DirLtr && dir != DirRtl {
-		return errors.New("web common dir must be 'auto', 'ltr', 'rtl'")
-	}
-	return nil
-}
-
-func GetDefaultWebNotificationMessage(tokenArr []string) *HuaweiMessage {
-	msg := NewNotificationMsgRequest()
-	msg.Message.Token = tokenArr
-	msg.Message.WebPush = GetDefaultWebPushConfig()
-	return msg
 }

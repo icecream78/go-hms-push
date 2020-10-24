@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -145,6 +146,143 @@ type Notification struct {
 	// If this parameter is not set, the icon is not displayed.
 	// The URL must be an HTTPS URL, example: https://example.com/image.png
 	Image string `json:"image,omitempty"`
+}
+
+type Visibility string
+
+const (
+	VisibilityUnspecified Visibility = "VISIBILITY_UNSPECIFIED"
+	VisibilityPrivate     Visibility = "PRIVATE"
+	VisibilityPublic      Visibility = "PUBLIC"
+	VisibilitySecret      Visibility = "SECRET"
+)
+
+func (v Visibility) MarshalJSON() ([]byte, error) {
+	switch v {
+	case VisibilityUnspecified, VisibilityPrivate, VisibilityPublic, VisibilitySecret:
+		return json.Marshal(string(v))
+	}
+
+	return nil, errors.New("Invalid visibility type")
+}
+
+type AndroidUrgency string
+
+const (
+	AndroidUrgencyHigh   AndroidUrgency = "HIGH"
+	AndroidUrgencyNormal AndroidUrgency = "NORMAL"
+)
+
+func (d AndroidUrgency) MarshalJSON() ([]byte, error) {
+	switch d {
+	case AndroidUrgencyHigh, AndroidUrgencyNormal:
+		return json.Marshal(string(d))
+	}
+
+	return nil, errors.New("Invalid delivery priority type")
+}
+
+type NotificationPriority string
+
+const (
+	NotificationPriorityHigh   NotificationPriority = "HIGH"
+	NotificationPriorityNormal NotificationPriority = "NORMAL"
+	NotificationPriorityLow    NotificationPriority = "LOW"
+)
+
+func (p NotificationPriority) MarshalJSON() ([]byte, error) {
+	switch p {
+	case NotificationPriorityHigh, NotificationPriorityNormal, NotificationPriorityLow:
+		return json.Marshal(string(p))
+	}
+
+	return nil, errors.New("Invalid notification priority type")
+}
+
+type Urgency string
+
+const (
+	UrgencyVeryLow Urgency = "very-low"
+	UrgencyLow     Urgency = "low"
+	UrgencyNormal  Urgency = "normal"
+	UrgencyHigh    Urgency = "high"
+)
+
+func (u Urgency) MarshalJSON() ([]byte, error) {
+	switch u {
+	case UrgencyVeryLow, UrgencyLow, UrgencyNormal, UrgencyHigh:
+		return json.Marshal(string(u))
+	}
+
+	return nil, errors.New("Invalid urgency type")
+}
+
+type TextDirection string
+
+const (
+	TextDirAuto TextDirection = "auto"
+	TextDirLtr  TextDirection = "ltr"
+	TextDirRtl  TextDirection = "rtl"
+)
+
+func (d TextDirection) MarshalJSON() ([]byte, error) {
+	switch d {
+	case TextDirAuto, TextDirLtr, TextDirRtl:
+		return []byte(d), nil
+	}
+
+	return nil, errors.New("Invalid text direction type")
+}
+
+type NotificationBarStyle int
+
+const (
+	NotificationBarStyleDefault NotificationBarStyle = 0
+	NotificationBarStyleBigText                      = iota<<1 - 1
+	NotificationBarStyleInbox
+)
+
+func (b NotificationBarStyle) MarshalJSON() ([]byte, error) {
+	switch b {
+	case NotificationBarStyleDefault, NotificationBarStyleBigText, NotificationBarStyleInbox:
+		return []byte(strconv.Itoa(int(b))), nil
+	}
+
+	return nil, errors.New("Invalid notification bar style type")
+}
+
+type ClickActionType int
+
+const (
+	ClickActionTypeIntentOrAction ClickActionType = iota + 1
+	ClickActionTypeUrl
+	ClickActionTypeApp
+	ClickActionTypeRichResource
+)
+
+func (a ClickActionType) MarshalJSON() ([]byte, error) {
+	switch a {
+	case ClickActionTypeIntentOrAction, ClickActionTypeUrl, ClickActionTypeApp, ClickActionTypeRichResource:
+		return []byte(strconv.Itoa(int(a))), nil
+	}
+
+	return nil, errors.New("Invalid click action type")
+}
+
+type FastAppState int
+
+const (
+	FastAppStateDevelop FastAppState = iota + 1
+	FastAppStateProduct
+)
+
+func (s FastAppState) MarshalJSON() ([]byte, error) {
+	switch s {
+	case FastAppStateDevelop, FastAppStateProduct:
+		return []byte(strconv.Itoa(int(s))), nil
+	}
+
+	return nil, errors.New("Invalid fast app state type")
 }
 
 // NewNotificationMsgRequest will return a new MessageRequest instance with default value to send notification message.

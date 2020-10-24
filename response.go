@@ -1,8 +1,10 @@
 package hms
 
+type ResponseCode string
+
 const (
 	// success code from push server
-	SuccessCode = "80000000"
+	SuccessCode ResponseCode = "80000000"
 
 	// Some tokens are successfully sent. Tokens identified by illegal_token are those failed to be sent.
 	SomeTokenSuccessErrorCode = "80100000"
@@ -52,7 +54,7 @@ const (
 
 type HuaweiResponse struct {
 	// Result code.
-	Code string `json:"code"`
+	Code ResponseCode `json:"code"`
 
 	// Result code description.
 	Msg string `json:"msg"`
