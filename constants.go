@@ -2,7 +2,7 @@ package hms
 
 const (
 	// auth url
-	authUrl = "https://login.cloud.huawei.com/oauth2/v2/token"
+	authUrl = "https://oauth-login.cloud.huawei.com/oauth2/v3/token"
 
 	// push server url
 	sendMessageURLFmt = "https://api.push.hicloud.com/v1/%s/messages:send"
