@@ -1,9 +1,5 @@
 package hms
 
-import (
-	"errors"
-)
-
 type AndroidConfig struct {
 	// Mode for the HUAWEI Push Kit server to control messages cached in user offline status.
 	// These cached messages will be delivered once the user device goes online again.
@@ -289,7 +285,7 @@ func validateAndroidConfig(androidConfig *AndroidConfig) error {
 	}
 
 	if androidConfig.CollapseKey < -1 || androidConfig.CollapseKey > 100 {
-		return errors.New("collapse_key must be in interval [-1 - 100]")
+		return ErrorCollapseKeyValue
 	}
 
 	// validate android notification
@@ -302,7 +298,7 @@ func validateAndroidNotification(notification *AndroidNotification) error {
 	}
 
 	if notification.Sound == "" && !notification.DefaultSound {
-		return errors.New("sound must not be empty when default_sound is false")
+		return ErrorSoundEmpty
 	}
 
 	if err := validateAndroidNotifyStyle(notification); err != nil {
@@ -322,7 +318,7 @@ func validateAndroidNotification(notification *AndroidNotification) error {
 	}
 
 	if notification.Color != "" && !colorPattern.MatchString(notification.Color) {
-		return errors.New("color must be in the form #RRGGBB")
+		return ErrorColorFormat
 	}
 
 	// validate click action
@@ -332,11 +328,11 @@ func validateAndroidNotification(notification *AndroidNotification) error {
 func validateAndroidNotifyStyle(notification *AndroidNotification) error {
 	if notification.Style == NotificationBarStyleBigText {
 		if notification.BigTitle == "" {
-			return errors.New("big_title must not be empty when style is 1")
+			return ErrorBigTitleEmpty
 		}
 
 		if notification.BigBody == "" {
-			return errors.New("big_body must not be empty when style is 1")
+			return ErrorBigBodyEmpty
 		}
 	}
 	return nil
@@ -345,11 +341,11 @@ func validateAndroidNotifyStyle(notification *AndroidNotification) error {
 func validateVibrateTimings(notification *AndroidNotification) error {
 	if notification.VibrateConfig != nil {
 		if len(notification.VibrateConfig) > 10 {
-			return errors.New("vibrate_timings can't be more than 10 elements")
+			return ErrorVibrateTimingOverflow
 		}
 		for _, vibrateTiming := range notification.VibrateConfig {
 			if vibrateTiming.Seconds() > 60 {
-				return errors.New("vibrate_timings are more 60 seconds")
+				return ErrorVibrateTimingDuration
 			}
 		}
 	}
@@ -369,7 +365,7 @@ func validateLightSetting(notification *AndroidNotification) error {
 	}
 
 	if notification.LightSettings.Color == nil {
-		return errors.New("light_settings.color can't be nil")
+		return ErrorLightThemeColorNil
 	}
 
 	return nil
@@ -377,25 +373,25 @@ func validateLightSetting(notification *AndroidNotification) error {
 
 func validateClickAction(clickAction *ClickAction) error {
 	if clickAction == nil {
-		return errors.New("click_action object must not be null")
+		return ErrorClickActionNil
 	}
 
 	switch clickAction.Type {
 	case ClickActionTypeIntentOrAction:
 		if clickAction.Intent == "" && clickAction.Action == "" {
-			return errors.New("at least one of intent and action is not empty when type is 1")
+			return ErrorIntentAndActionEmpty
 		}
 	case ClickActionTypeUrl:
 		if clickAction.Url == "" {
-			return errors.New("url must not be empty when type is 2")
+			return ErrorEmptyURL
 		}
 	case ClickActionTypeApp:
 	case ClickActionTypeRichResource:
 		if clickAction.RichResource == "" {
-			return errors.New("rich_resource must not be empty when type is 4")
+			return ErrorRichResourceEmpty
 		}
 	default:
-		return errors.New("type must be in the interval [1 - 4]")
+		return ErrorClickActionValue
 	}
 	return nil
 }

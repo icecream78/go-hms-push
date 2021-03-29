@@ -25,46 +25,37 @@ type HuaweiClient struct {
 	appId     string
 	token     string
 	appSecret string
-	client    Transporter
+	transport Transporter
 }
 
 // NewClient creates a instance of the huawei cloud common client
 // It's contained in huawei cloud app and provides service through huawei cloud app
 func NewHuaweiClient(appId, appSecret string) (*HuaweiClient, error) {
-	if appId == "" {
-		return nil, errors.New("appId can't be empty")
+	tr, err := NewHTTPTransport(DefaultRetryCount, DefaultRetryIntervalMs)
+	if err != nil {
+		return nil, ErrorFailGetHttpClient
 	}
 
-	client, err := NewHTTPTransport(DefaultRetryCount, DefaultRetryIntervalMs)
-	if err != nil {
-		return nil, errors.New("failed to get http client")
+	return NewHuaweiClientWithTransport(appId, appSecret, tr)
+}
+
+func NewHuaweiClientWithTransport(appId, appSecret string, transport Transporter) (*HuaweiClient, error) {
+	if appId == "" {
+		return nil, ErrorAppIdEmpty
 	}
 
 	return &HuaweiClient{
 		appId:     appId,
 		appSecret: appSecret,
-		client:    client,
+		transport: transport,
 	}, nil
-}
-
-func NewHuaweiClientWithTransport(appId, appSecret string, transport Transporter) (*HuaweiClient, error) {
-	client, err := NewHuaweiClient(appId, appSecret)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := client.SetTransport(transport); err != nil {
-		return nil, err
-	}
-
-	return client, nil
 }
 
 func (c *HuaweiClient) SetTransport(transport Transporter) error {
 	if transport == nil {
-		return errors.New("passed empty transport")
+		return ErrorEmptyTransport
 	}
-	c.client = transport
+	c.transport = transport
 
 	return nil
 }
@@ -84,7 +75,7 @@ func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
 		SetStringBody(body).
 		SetHeader("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := c.client.Send(ctx, request)
+	resp, err := c.transport.Send(ctx, request)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +98,7 @@ func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
 func (c *HuaweiClient) refreshToken(ctx context.Context) error {
 	token, err := c.requestToken(ctx)
 	if err != nil {
-		return errors.New("refresh token fail")
+		return ErrorRefreshToken
 	}
 
 	c.token = token
@@ -133,7 +124,7 @@ func (c *HuaweiClient) executeApiOperation(ctx context.Context, request *HttpReq
 }
 
 func (c *HuaweiClient) sendHttpRequest(ctx context.Context, request *HttpRequest) (*HuaweiResponse, error) {
-	resp, err := c.client.Send(ctx, request)
+	resp, err := c.transport.Send(ctx, request)
 	if err != nil {
 		return nil, err
 	}

@@ -64,7 +64,7 @@ func (r *HttpRequest) AddContext(ctx context.Context) *HttpRequest {
 
 func (r *HttpRequest) Build() (req *http.Request, err error) {
 	if !(r.Method == http.MethodGet || r.Method == http.MethodPost) {
-		return nil, errors.New("not found method")
+		return nil, ErrorUnsupportedMethod
 	}
 
 	var body io.Reader
@@ -121,7 +121,7 @@ func NewHTTPTransport(retryCount int, retryIntervalMs int) (*HttpTransport, erro
 func NewHTTPTransportWithProxy(retryCount int, retryIntervalMs int, proxyUrl string) (*HttpTransport, error) {
 	proxy, err := url.Parse(proxyUrl)
 	if err != nil {
-		return nil, errors.New("fail parse proxy url")
+		return nil, ErrorFailParseProxyURL
 	}
 
 	tr := &http.Transport{

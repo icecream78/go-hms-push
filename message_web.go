@@ -1,7 +1,6 @@
 package hms
 
 import (
-	"errors"
 	"time"
 )
 
@@ -126,7 +125,7 @@ func validateWebPushAction(actions []*WebPushAction) error {
 
 	for _, action := range actions {
 		if action.Action == "" {
-			return errors.New("web common action can't be empty")
+			return ErrorWebActionEmpty
 		}
 	}
 	return nil

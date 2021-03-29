@@ -163,7 +163,7 @@ func (v Visibility) MarshalJSON() ([]byte, error) {
 		return json.Marshal(string(v))
 	}
 
-	return nil, errors.New("Invalid visibility type")
+	return nil, ErrorInvalidVisabilityType
 }
 
 type AndroidUrgency string
@@ -179,7 +179,7 @@ func (d AndroidUrgency) MarshalJSON() ([]byte, error) {
 		return json.Marshal(string(d))
 	}
 
-	return nil, errors.New("Invalid delivery priority type")
+	return nil, ErrorInvalidDeliveryPriorityType
 }
 
 type NotificationPriority string
@@ -196,7 +196,7 @@ func (p NotificationPriority) MarshalJSON() ([]byte, error) {
 		return json.Marshal(string(p))
 	}
 
-	return nil, errors.New("Invalid notification priority type")
+	return nil, ErrorInvalidNotificationPriorityType
 }
 
 type Urgency string
@@ -214,7 +214,7 @@ func (u Urgency) MarshalJSON() ([]byte, error) {
 		return json.Marshal(string(u))
 	}
 
-	return nil, errors.New("Invalid urgency type")
+	return nil, ErrorInvalidUrgencyType
 }
 
 type TextDirection string
@@ -231,7 +231,7 @@ func (d TextDirection) MarshalJSON() ([]byte, error) {
 		return []byte(d), nil
 	}
 
-	return nil, errors.New("Invalid text direction type")
+	return nil, ErrorInvalidTextDirectionType
 }
 
 type NotificationBarStyle int
@@ -248,7 +248,7 @@ func (b NotificationBarStyle) MarshalJSON() ([]byte, error) {
 		return []byte(strconv.Itoa(int(b))), nil
 	}
 
-	return nil, errors.New("Invalid notification bar style type")
+	return nil, ErrorInvalidNotificationBarStyleType
 }
 
 type ClickActionType int
@@ -266,7 +266,7 @@ func (a ClickActionType) MarshalJSON() ([]byte, error) {
 		return []byte(strconv.Itoa(int(a))), nil
 	}
 
-	return nil, errors.New("Invalid click action type")
+	return nil, ErrorInvalidClickActionType
 }
 
 type FastAppState int
@@ -282,7 +282,7 @@ func (s FastAppState) MarshalJSON() ([]byte, error) {
 		return []byte(strconv.Itoa(int(s))), nil
 	}
 
-	return nil, errors.New("Invalid fast app state type")
+	return nil, ErrorInvalidFastAppStateType
 }
 
 // NewNotificationMsgRequest will return a new MessageRequest instance with default value to send notification message.
