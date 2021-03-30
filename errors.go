@@ -6,6 +6,8 @@ var (
 	// client errors
 	ErrorFailGetHttpClient = errors.New("failed to get http client")
 	ErrorAppIdEmpty        = errors.New("appId can't be empty")
+	ErrorTokenEmpty        = errors.New("token can't be empty")
+	ErrorSecretEmpty       = errors.New("secret can't be empty")
 	ErrorEmptyTransport    = errors.New("passed empty transport")
 	ErrorRefreshToken      = errors.New("refresh token fail")
 

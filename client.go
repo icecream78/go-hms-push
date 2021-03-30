@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type Transporter interface {
@@ -25,44 +26,82 @@ type HuaweiClient struct {
 	appId     string
 	token     string
 	appSecret string
+
 	transport Transporter
 }
 
-// NewClient creates a instance of the huawei cloud common client
-// It's contained in huawei cloud app and provides service through huawei cloud app
-func NewHuaweiClient(appId, appSecret string) (*HuaweiClient, error) {
-	tr, err := NewHTTPTransport(DefaultRetryCount, DefaultRetryIntervalMs)
+// Token return current token value
+func (c *HuaweiClient) Token() string {
+	return c.token
+}
+
+// AutoUpdateToken runs logic for auto regeneration token
+func (c *HuaweiClient) AutoUpdateToken(ctx context.Context) {
+	forceRefreshToken := true
+
+	for {
+		if forceRefreshToken {
+			if err := c.RequestToken(ctx); err != nil {
+				time.Sleep(10 * time.Second) // myabe make it more progressive
+				continue
+			}
+
+			forceRefreshToken = false
+			continue
+		}
+
+		select {
+		case <-time.After(RefreshTokenTime):
+			forceRefreshToken = true
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// RequestToken sends manual request to huawei cloud and updates token after successful response
+func (c *HuaweiClient) RequestToken(ctx context.Context) error {
+	token, err := c.requestToken(ctx)
 	if err != nil {
-		return nil, ErrorFailGetHttpClient
+		return ErrorRefreshToken
 	}
 
-	return NewHuaweiClientWithTransport(appId, appSecret, tr)
-}
-
-func NewHuaweiClientWithTransport(appId, appSecret string, transport Transporter) (*HuaweiClient, error) {
-	if appId == "" {
-		return nil, ErrorAppIdEmpty
-	}
-
-	return &HuaweiClient{
-		appId:     appId,
-		appSecret: appSecret,
-		transport: transport,
-	}, nil
-}
-
-func (c *HuaweiClient) SetTransport(transport Transporter) error {
-	if transport == nil {
-		return ErrorEmptyTransport
-	}
-	c.transport = transport
-
+	c.token = token
 	return nil
 }
 
-// GetToken return current token value
-func (c *HuaweiClient) GetToken() string {
-	return c.token
+// SendMessage sends a message to huawei cloud common
+// One of Token, Topic and Condition fields must be invoked in message
+// If validationOnly is set to true, the message can be verified by not sent to users
+func (c *HuaweiClient) SendMessage(ctx context.Context, msgRequest *HuaweiMessage) (*HuaweiResponse, error) {
+	if err := msgRequest.Validate(); err != nil {
+		return nil, err
+	}
+
+	body, err := json.Marshal(msgRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	// initial send call after client init
+	if c.token == "" {
+		if err := c.RequestToken(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	request := NewHTTPRequest().
+		SetMethod(http.MethodPost).
+		SetURL(fmt.Sprintf(sendMessageURLFmt, c.appId)).
+		SetByteBody(body).
+		SetHeader("Content-Type", "application/json;charset=utf-8").
+		SetHeader("Authorization", "Bearer "+c.token)
+
+	resp, err := c.sendHttpRequest(ctx, request)
+	if err != nil {
+		return resp, err
+	}
+	return resp, err
 }
 
 func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
@@ -95,34 +134,6 @@ func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
 	return token.AccessToken, nil
 }
 
-func (c *HuaweiClient) refreshToken(ctx context.Context) error {
-	token, err := c.requestToken(ctx)
-	if err != nil {
-		return ErrorRefreshToken
-	}
-
-	c.token = token
-	return nil
-}
-
-func (c *HuaweiClient) executeApiOperation(ctx context.Context, request *HttpRequest) (*HuaweiResponse, error) {
-	resp, err := c.sendHttpRequest(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
-	// if need to retry for token timeout or other reasons
-	retry, err := c.isNeedRetry(ctx, resp)
-	if err != nil {
-		return nil, err
-	}
-
-	if retry {
-		return c.sendHttpRequest(ctx, request)
-	}
-	return resp, err
-}
-
 func (c *HuaweiClient) sendHttpRequest(ctx context.Context, request *HttpRequest) (*HuaweiResponse, error) {
 	resp, err := c.transport.Send(ctx, request)
 	if err != nil {
@@ -138,51 +149,4 @@ func (c *HuaweiClient) sendHttpRequest(ctx context.Context, request *HttpRequest
 	}
 
 	return &hr, nil
-}
-
-// if token is timeout or error or other reason, need to refresh token and send again
-func (c *HuaweiClient) isNeedRetry(ctx context.Context, resp *HuaweiResponse) (bool, error) {
-	if !(resp.Code == TokenTimeoutErrorCode || resp.Code == TokenFailedErrorCode) {
-		return false, nil
-	}
-
-	if err := c.refreshToken(ctx); err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
-// SendMessage sends a message to huawei cloud common
-// One of Token, Topic and Condition fields must be invoked in message
-// If validationOnly is set to true, the message can be verified by not sent to users
-func (c *HuaweiClient) SendMessage(ctx context.Context, msgRequest *HuaweiMessage) (*HuaweiResponse, error) {
-	if err := msgRequest.Validate(); err != nil {
-		return nil, err
-	}
-
-	body, err := json.Marshal(msgRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	// initial send call after client init
-	if c.token == "" {
-		if err := c.refreshToken(ctx); err != nil {
-			return nil, err
-		}
-	}
-
-	request := NewHTTPRequest().
-		SetMethod(http.MethodPost).
-		SetURL(fmt.Sprintf(sendMessageURLFmt, c.appId)).
-		SetByteBody(body).
-		SetHeader("Content-Type", "application/json;charset=utf-8").
-		SetHeader("Authorization", "Bearer "+c.token)
-
-	resp, err := c.executeApiOperation(ctx, request)
-	if err != nil {
-		return resp, err
-	}
-	return resp, err
 }
