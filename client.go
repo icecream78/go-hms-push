@@ -7,19 +7,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
 type Transporter interface {
 	Send(ctx context.Context, req *HttpRequest) (*HttpResponse, error)
-}
-
-type TokenMsg struct {
-	AccessToken      string `json:"access_token"`
-	ExpiresIn        int    `json:"expires_in"`
-	Scope            string `json:"scope"`
-	Error            string `json:"error"`
-	ErrorDescription string `json:"error_description"`
 }
 
 type HuaweiClient struct {
@@ -28,11 +21,17 @@ type HuaweiClient struct {
 	appSecret string
 
 	transport Transporter
+
+	mu sync.RWMutex
 }
 
 // Token return current token value
 func (c *HuaweiClient) Token() string {
-	return c.token
+	c.mu.RLock()
+	token := c.token
+	c.mu.RUnlock()
+
+	return token
 }
 
 // AutoUpdateToken runs logic for auto regeneration token
@@ -41,7 +40,7 @@ func (c *HuaweiClient) AutoUpdateToken(ctx context.Context) {
 
 	for {
 		if forceRefreshToken {
-			if err := c.RequestToken(ctx); err != nil {
+			if _, err := c.RequestToken(ctx); err != nil {
 				time.Sleep(10 * time.Second) // myabe make it more progressive
 				continue
 			}
@@ -60,14 +59,17 @@ func (c *HuaweiClient) AutoUpdateToken(ctx context.Context) {
 }
 
 // RequestToken sends manual request to huawei cloud and updates token after successful response
-func (c *HuaweiClient) RequestToken(ctx context.Context) error {
+func (c *HuaweiClient) RequestToken(ctx context.Context) (*TokenMsg, error) {
 	token, err := c.requestToken(ctx)
 	if err != nil {
-		return ErrorRefreshToken
+		return nil, ErrorRefreshToken
 	}
 
-	c.token = token
-	return nil
+	c.mu.Lock()
+	c.token = token.AccessToken
+	c.mu.Unlock()
+
+	return token, nil
 }
 
 // SendMessage sends a message to huawei cloud common
@@ -83,19 +85,12 @@ func (c *HuaweiClient) SendMessage(ctx context.Context, msgRequest *HuaweiMessag
 		return nil, err
 	}
 
-	// initial send call after client init
-	if c.token == "" {
-		if err := c.RequestToken(ctx); err != nil {
-			return nil, err
-		}
-	}
-
 	request := NewHTTPRequest().
 		SetMethod(http.MethodPost).
 		SetURL(fmt.Sprintf(sendMessageURLFmt, c.appId)).
 		SetByteBody(body).
 		SetHeader("Content-Type", "application/json;charset=utf-8").
-		SetHeader("Authorization", "Bearer "+c.token)
+		SetHeader("Authorization", "Bearer "+c.Token())
 
 	resp, err := c.sendHttpRequest(ctx, request)
 	if err != nil {
@@ -104,7 +99,7 @@ func (c *HuaweiClient) SendMessage(ctx context.Context, msgRequest *HuaweiMessag
 	return resp, err
 }
 
-func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
+func (c *HuaweiClient) requestToken(ctx context.Context) (*TokenMsg, error) {
 	u, _ := url.Parse(c.appSecret)
 	body := fmt.Sprintf("grant_type=client_credentials&client_secret=%s&client_id=%s", u.String(), c.appId)
 
@@ -116,11 +111,11 @@ func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
 
 	resp, err := c.transport.Send(ctx, request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if resp.Status != http.StatusOK {
-		return "", errors.New("fail get token")
+		return nil, errors.New("fail get token")
 	}
 
 	respDecoder := json.NewDecoder(resp.Body)
@@ -128,10 +123,10 @@ func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
 
 	var token TokenMsg
 	if err := respDecoder.Decode(&token); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return token.AccessToken, nil
+	return &token, nil
 }
 
 func (c *HuaweiClient) sendHttpRequest(ctx context.Context, request *HttpRequest) (*HuaweiResponse, error) {

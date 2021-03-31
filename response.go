@@ -52,6 +52,7 @@ const (
 	InternalErrorCode = "81000001"
 )
 
+// HuaweiResponse response struct for sended message
 type HuaweiResponse struct {
 	// Result code.
 	Code ResponseCode `json:"code"`
@@ -61,4 +62,22 @@ type HuaweiResponse struct {
 
 	// Request ID.
 	RequestId string `json:"requestId"`
+}
+
+// TokenMsg response struct for token requests
+type TokenMsg struct {
+	// AccessToken for further interaction with HMS cloud
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn time until token is active (in seconds. default is 3600 seconds)
+	ExpiresIn int `json:"expires_in"`
+
+	// Scope character string array separated by space
+	Scope string `json:"scope"`
+
+	// Error string code for erro
+	Error string `json:"error"`
+
+	// ErrorDescription string descripton for occured error
+	ErrorDescription string `json:"error_description"`
 }
