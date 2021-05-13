@@ -17,8 +17,11 @@ type Transporter interface {
 
 type HuaweiClient struct {
 	appId     string
-	token     string
 	appSecret string
+
+	tokenInfo *TokenMsg
+
+	isAutoUpdateRun bool
 
 	transport Transporter
 
@@ -26,16 +29,17 @@ type HuaweiClient struct {
 }
 
 // Token return current token value
-func (c *HuaweiClient) Token() string {
+func (c *HuaweiClient) Token() *TokenMsg {
 	c.mu.RLock()
-	token := c.token
+	token := c.tokenInfo
 	c.mu.RUnlock()
 
 	return token
 }
 
-// AutoUpdateToken runs logic for auto regeneration token
-func (c *HuaweiClient) AutoUpdateToken(ctx context.Context) {
+// StartAutoUpdateToken runs logic for auto regeneration token
+func (c *HuaweiClient) StartAutoUpdateToken(ctx context.Context, updateTime time.Duration) {
+	c.isAutoUpdateRun = true
 	forceRefreshToken := true
 
 	for {
@@ -50,9 +54,10 @@ func (c *HuaweiClient) AutoUpdateToken(ctx context.Context) {
 		}
 
 		select {
-		case <-time.After(RefreshTokenTime):
+		case <-time.After(updateTime):
 			forceRefreshToken = true
 		case <-ctx.Done():
+			c.isAutoUpdateRun = false
 			return
 		}
 	}
@@ -66,7 +71,7 @@ func (c *HuaweiClient) RequestToken(ctx context.Context) (*TokenMsg, error) {
 	}
 
 	c.mu.Lock()
-	c.token = token.AccessToken
+	c.tokenInfo = token
 	c.mu.Unlock()
 
 	return token, nil
@@ -85,12 +90,28 @@ func (c *HuaweiClient) SendMessage(ctx context.Context, msgRequest *HuaweiMessag
 		return nil, err
 	}
 
+	var token *TokenMsg
+
+	if !c.isAutoUpdateRun {
+		reqCtx, reqCtxCancel := context.WithTimeout(ctx, time.Second*3)
+		defer reqCtxCancel()
+
+		tokenMsg, err := c.RequestToken(reqCtx)
+		if err != nil {
+			return nil, err
+		}
+
+		token = tokenMsg
+	} else {
+		token = c.Token()
+	}
+
 	request := NewHTTPRequest().
 		SetMethod(http.MethodPost).
 		SetURL(fmt.Sprintf(sendMessageURLFmt, c.appId)).
 		SetByteBody(body).
 		SetHeader("Content-Type", "application/json;charset=utf-8").
-		SetHeader("Authorization", "Bearer "+c.Token())
+		SetHeader("Authorization", "Bearer "+token.AccessToken)
 
 	resp, err := c.sendHttpRequest(ctx, request)
 	if err != nil {
