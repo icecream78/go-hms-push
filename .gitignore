@@ -57,3 +57,4 @@ vendor/
 # tmp not commited folders with dev info
 examples/
 docs/
+.idea/
