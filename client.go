@@ -75,7 +75,10 @@ func (c *HuaweiClient) GetToken() string {
 }
 
 func (c *HuaweiClient) requestToken(ctx context.Context) (string, error) {
-	u, _ := url.Parse(c.appSecret)
+	u, err := url.Parse(c.appSecret)
+	if err != nil {
+		return "", err
+	}
 	body := fmt.Sprintf("grant_type=client_credentials&client_secret=%s&client_id=%s", u.String(), c.appId)
 
 	request := NewHTTPRequest().
