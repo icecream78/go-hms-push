@@ -121,7 +121,11 @@ func (c *HuaweiClient) SendMessage(ctx context.Context, msgRequest *HuaweiMessag
 }
 
 func (c *HuaweiClient) requestToken(ctx context.Context) (*TokenMsg, error) {
-	u, _ := url.Parse(c.appSecret)
+	u, err := url.Parse(c.appSecret)
+	if err != nil {
+		return nil, err
+	}
+
 	body := fmt.Sprintf("grant_type=client_credentials&client_secret=%s&client_id=%s", u.String(), c.appId)
 
 	request := NewHTTPRequest().
